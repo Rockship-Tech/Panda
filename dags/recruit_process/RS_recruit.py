@@ -6,10 +6,10 @@ from airflow.providers.amazon.aws.hooks.s3 import S3Hook
 from pendulum import datetime
 import logging
 
-# Add the parent directory to sys.path
+# Add the common module to the Python path
 current_dir = os.path.dirname(os.path.abspath(__file__))
-parent_dir = os.path.dirname(current_dir)
-sys.path.append(parent_dir)
+common_dir = os.path.join(current_dir, '..', 'common')
+sys.path.append(common_dir)
 
 from common.scripts.ITViecCVScraper import ITViecCVScraper
 from common.scripts.pdf_converter import pdf_converter
