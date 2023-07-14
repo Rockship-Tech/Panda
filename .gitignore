@@ -1,2 +1,3 @@
 # Server/
 # airflow-chart/
+dags/financial_extraction/output/
