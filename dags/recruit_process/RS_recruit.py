@@ -63,7 +63,7 @@ def download_pdf_file(s3_file):
 @task
 def convert_pdf_to_text_task(pdf_file_path):
     # Task 2: Convert PDF to text using pdfplumber
-    text = convert_pdf_to_text(pdf_file_path)
+    text = pdf_converter(pdf_file_path)
     return text
 
 @task
@@ -86,6 +86,7 @@ def remove_local_files(pdf_file_path, text_file_path):
     # Task 4: Remove the local PDF and text files
     os.remove(pdf_file_path)
     os.remove(text_file_path)
+
 
 with DAG(
     'cv_processing_dag',
