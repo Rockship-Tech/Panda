@@ -3,8 +3,8 @@ from pdf_downloader import pdf_downloader
 from pdf_converter import pdf_converter
 
 # set directory path where the pdf files are located
-pdf_directory = r"dags\financial_extraction\output\10_Q_pdf"
-txt_directory = r"dags\financial_extraction\output\10_Q_text"
+pdf_directory = r"panda\dags\financial_extraction\output\10_Q_pdf"
+txt_directory = r"panda\dags\financial_extraction\output\10_Q_text"
 
 # get the 
 company_info = sec(cik = "0001652044", form = "10-Q")
