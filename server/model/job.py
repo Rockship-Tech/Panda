@@ -13,12 +13,12 @@ from sqlalchemy.ext.hybrid import hybrid_property
 
 class Job(Base):
     __tablename__ = "job"
-    
+
     id = Column(Integer, primary_key=True, autoincrement=True)
     title = Column(String(255))
     description = Column(Text)
     responsibilities = Column(Text)
     qualifications = Column(Text)
     work_mode = Column(String(255))
-    
+
     candidate = relationship("Candidate", back_populates="job")
