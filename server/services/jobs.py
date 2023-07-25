@@ -13,6 +13,7 @@ def create_job(request, database) -> Job:
     database.add(job)
     database.commit()
     database.refresh(job)
+
     return job
 
 
@@ -24,14 +25,3 @@ def get_job_by_id(database, jobId: int) -> Optional[Job]:
 def get_all_job(database) -> List[Job]:
     jobs = database.query(Job).all()
     return jobs
-
-
-def display_job(Job):
-    return {
-        "id": Job.id,
-        "title": Job.title,
-        "description": Job.description,
-        "responsibilities": Job.responsibilities,
-        "qualifications": Job.qualifications,
-        "work_mode": Job.work_mode,
-    }
