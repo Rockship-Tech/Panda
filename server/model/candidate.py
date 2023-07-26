@@ -1,7 +1,7 @@
 import uuid, random, string
 from datetime import datetime
 
-from .db import Base
+from system.model_base import Base
 
 from sqlalchemy import Column, Integer, String, Text, DateTime, ForeignKey, JSON
 from sqlalchemy.orm import relationship
@@ -14,15 +14,50 @@ from sqlalchemy.ext.hybrid import hybrid_property
 class Candidate(Base):
     __tablename__ = "candidate"
 
-    id = Column(Integer, primary_key=True, autoincrement=True)
+    uuid = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     name = Column(String(255))
     date_of_birth = Column(String(255))
     submited_datetime = Column(DateTime)
     email = Column(String(255), unique=True)  # Add unique constraint
     phone = Column(String(255))
     cv_score = Column(Integer)
-    job_id = Column(Integer, ForeignKey("job.id"))
+    job_uuid = Column(UUID(as_uuid=True), ForeignKey("job.uuid"))
     status = Column(String(255))
     interview_feedback = Column(JSON)
+    createdAt = Column(DateTime, default=datetime.utcnow())
+    updatedAt = Column(DateTime, default=datetime.utcnow(), onupdate=datetime.utcnow())
 
-    job = relationship("Job", back_populates="candidate")
+    @hybrid_property
+    def created_at(self):
+        return self.createdAt
+
+    @created_at.setter
+    def created_at(self, value):
+        self.createdAt = value
+
+    @hybrid_property
+    def updated_at(self):
+        return self.updatedAt
+
+    @updated_at.setter
+    def updated_at(self, value):
+        self.updatedAt = value
+
+    # Establish the relationship between Candidate and Job tables
+    job = relationship("Job", back_populates="candidates")
+
+    def display(self):
+        return {
+            "uuid": self.uuid,
+            "name": self.name,
+            "date_of_birth": self.date_of_birth,
+            "submited_datetime": self.submited_datetime,
+            "email": self.email,
+            "phone": self.phone,
+            "cv_score": self.cv_score,
+            "job_id": self.job_id,
+            "status": self.status,
+            "interview_feedback": self.interview_feedback,
+            "createdAt": self.createdAt,
+            "updatedAt": self.updatedAt,
+        }

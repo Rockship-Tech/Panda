@@ -1,10 +1,12 @@
 from flask import Blueprint, request, jsonify
 from sqlalchemy.orm import Session
-from ..system import model_base
-from ..system import schema_validator
-from ..system.responses import Responses
-from ..services import jobs as jobsService
+from system import model_base
+from system import schema_validator
+from system.responses import Responses, SuccessResponse, ErrorResponse
+from services.jobs import Jobs as jobsService
 import logging
+import uuid
+
 
 jobs = Blueprint("jobs", __name__, url_prefix="/jobs")
 
@@ -17,111 +19,100 @@ def create_job():
             **data
         )  # Validate and convert the JSON data to the Job model
     except ValueError as e:
-        return Responses.bad_request_response(str(e), context="/jobs/")
+        return ErrorResponse(context="/jobs/").bad_request_response(str(e))
 
-    database = model_base.SessionLocal()  # Create a new database session
     try:
-        created_job = jobsService.create_job(
-            job, database
-        )  # Pass the Job model to the create_job function from the jobs service
+        with model_base.get_db() as database:
+            created_job = jobsService(database).create_job(job)
 
-        database.commit()  # Commit the changes to the database
-
-        # Serialize the created_job data using DisplayJob model
-        return Responses.success_response(created_job.display(), 201, context="/jobs/")
+            # Serialize the created_job data using DisplayJob model
+            return SuccessResponse(context="/jobs/").generate_response(
+                created_job.display(), 201
+            )
 
     except Exception as e:
-        database.rollback()  # Rollback changes if an error occurs
         logging.error(e)
-        return Responses.internal_server_error_response(context="/jobs/")
-
-    finally:
-        database.close()  # Always close the session after use
+        return ErrorResponse(context="/jobs/").internal_server_error_response()
 
 
 @jobs.route("/<jobId>", methods=["GET"])
 def get_job_with_candidates(jobId):
-    database = model_base.SessionLocal()  # Create a new database session
     try:
-        job = jobsService.get_job_by_id(
-            database, jobId
-        )  # Use the get_job_by_id function from the jobs service
-        if not job:
-            return Responses.not_found_response(context=f"/jobs/{jobId}")
-
-        # Assuming you have a method in the Job model to fetch candidates related to the job
-        candidates = job.get_candidates(database)
-
-        # Serialize the job and candidates data
-        response_data = {
-            "apiVersion": "1.0",
-            "context": f"/jobs/{jobId}",
-            "data": job.serialize(),
-            "candidates": [candidate.serialize() for candidate in candidates],
-        }
-        return jsonify(response_data), 200
-    finally:
-        database.close()  # Always close the session after use
+        with model_base.get_db() as db:
+            job = jobsService(db).get_job_with_candidates(uuid.UUID(jobId))
+            if not job:
+                return ErrorResponse(context="/jobs/").not_found_response()
+            else:
+                return SuccessResponse(context="/jobs/").generate_response(
+                    job.display(), 200
+                )
+    except Exception as e:
+        print(e)
+        return ErrorResponse(context="/jobs/").internal_server_error_response()
 
 
-@jobs.route("", methods=["GET"])
+@jobs.route("/<jobId>", methods=["DELETE"])
+def delete_job_by_id(jobId):
+    pass
+
+
+@jobs.route("/<jobId>", methods=["PUT"])
+def update_job(jobId):
+    try:
+        # Retrieve the job data from the request
+        request_data = request.json
+        # Validate the request data (you may implement validation logic here)
+
+        with model_base.get_db() as db:
+            jobs_service = jobsService(db)
+            job = jobs_service.get_job_by_id(uuid.UUID(jobId))
+            if not job:
+                return ErrorResponse(context="/jobs/").not_found_response()
+            # Update the job attributes with the new data from the request
+            updated_job = jobs_service.update_job(uuid.UUID(jobId), request_data)
+            if not updated_job:
+                return ErrorResponse(context="/jobs/").internal_server_error_response()
+
+            # Return a success response with the updated job data
+            return SuccessResponse(context="/jobs/").generate_response(
+                updated_job.display(), 200
+            )
+
+    except Exception as e:
+        print(e)
+        return ErrorResponse(context="/jobs/").internal_server_error_response()
+
+
+@jobs.route("/", methods=["GET"])
 def get_all_jobs():
-    database = model_base.SessionLocal()  # Create a new database session
+    # Parse query parameters
+    query_params = schema_validator.parse_query_params(request.args)
+    # Validate query parameters
+    validation_error = schema_validator.valid_params(query_params)
+    if validation_error:
+        return ErrorResponse(context="/jobs/").bad_request_response(validation_error)
+
     try:
-        respond = Responses(context="/jobs/")
-        # Parse query parameters
-        page = int(request.args.get("page", 1))
-        per_page = int(request.args.get("per_page", 20))
-        search_query = request.args.get("search", "")
-        sort_by = request.args.get("sort_by", "")
+        with model_base.get_db() as database:
+            jobs_service = jobsService(database)
+            jobs = jobs_service.get_all_jobs(query_params)
 
-        try:
-            all_jobs = jobsService.get_all_job(database)
-            # Filter jobs based on search query
-            if search_query:
-                all_jobs = [
-                    job for job in all_jobs if search_query.lower() in job.title.lower()
-                ]
-            print(all_jobs)
-            # Sort jobs based on sort_by (if provided)
-            if sort_by:
-                reverse = False
-                if sort_by.startswith("-"):
-                    sort_by = sort_by[1:]
-                    reverse = True
-                all_jobs.sort(key=lambda job: getattr(job, sort_by), reverse=reverse)
-
-            # Paginate the results
-            start_idx = (page - 1) * per_page
-            end_idx = start_idx + per_page
-            paginated_jobs = all_jobs[start_idx:end_idx]
-
-            serialized_jobs = [
-                job.display() for job in paginated_jobs
-            ]  # Assuming you have a serialize() method in the Job model
+            page = int(query_params.get("page", 1))
+            per_page = int(query_params.get("per_page", 10))
+            total_jobs = len(jobs)
+            # Convert each Job object to a dictionary representation
             response_data = {
                 "kind": "jobListing",
                 "fields": "id,title,description,responsibilities,qualifications,work_mode,createdAt,updatedAt",
-                "id": 1,
-                "lang": "en-US",
-                "updated": "2023-07-19T12:34:56Z",
-                "currentItemCount": len(serialized_jobs),
-                "itemsPerPage": per_page,
-                "startIndex": start_idx,
-                "totalItems": len(all_jobs),
-                "pageIndex": page - 1,
-                "totalPages": (len(all_jobs) // per_page) + 1,
-                "items": serialized_jobs,
+                "items": [job.display() for job in jobs],
+                "page": page,
+                "perPage": per_page,
+                "total": total_jobs,
             }
-            return respond.success_response(response_data, 200)
 
-        except Exception as e:
-            logging.error(e)
-            return respond.internal_server_error_response()
+            return SuccessResponse(context="/jobs/").generate_response(response_data)
 
-    finally:
-        database.close()  # Always close the session after use
-
-
-# @jobs.route("/<jobId>", methods=["DELETE"])
-# def delete_job_by_id(jobId):
+    except Exception as e:
+        # Handle the exception here, you can log the error or provide an error response
+        print(e)
+        return ErrorResponse(context="/jobs/").internal_server_error_response()
