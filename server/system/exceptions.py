@@ -9,14 +9,16 @@ import traceback
 import sentry_sdk
 from werkzeug.exceptions import MethodNotAllowed
 from flask import current_app as capp, jsonify
-from voluptuous import Invalid as VoluptuousInvalid
+
+# from voluptuous import Invalid as VoluptuousInvalid
 from sqlalchemy.exc import SQLAlchemyError, DBAPIError, IntegrityError
 
 
 class ApplicationError(Exception):
-    def __init__(self, message="Application Error", code=400, detail=None, toraise=False):
-        """toraise flag mean this exception should log to bug logging
-        """
+    def __init__(
+        self, message="Application Error", code=400, detail=None, toraise=False
+    ):
+        """toraise flag mean this exception should log to bug logging"""
         Exception.__init__(self)
         self.message = message
         self.status_code = code
@@ -60,6 +62,7 @@ def make_error(message, detail=None, code=400):
     if detail:
         rv["detail"] = detail
     return jsonify(rv), code
+
 
 def database_rollback():
     try:
@@ -106,7 +109,9 @@ def register_error_handlers(app):
     def handle_object_integrity(e):
         database_rollback()
         logging.error(traceback.format_exc())
-        return make_error("Invalid Value: Object already exist or a reference mismatch", code=400)
+        return make_error(
+            "Invalid Value: Object already exist or a reference mismatch", code=400
+        )
 
     @app.errorhandler(DBAPIError)
     @app.errorhandler(SQLAlchemyError)

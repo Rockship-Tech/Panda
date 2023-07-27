@@ -1,16 +1,26 @@
 import os
-
 from sqlalchemy import create_engine
-from sqlalchemy.orm import scoped_session, sessionmaker
 from sqlalchemy.ext.declarative import declarative_base
+from sqlalchemy.orm import sessionmaker
+from dotenv import load_dotenv
+from contextlib import contextmanager
 
-from system.model_util import JsonSerializer, ModelGeneralTasks, GeneralQuery
+# Load environment variables from .env file
+load_dotenv()
 
-engine = create_engine(os.environ["SQLALCHEMY_DATABASE_URI"])
+SQLALCHEMY_DATABASE_URI = os.getenv("SQLALCHEMY_DATABASE_URI")
 
-Session = scoped_session(
-    sessionmaker(autocommit=False, autoflush=False, bind=engine)
-)
+engine = create_engine(SQLALCHEMY_DATABASE_URI)
 
-Base = declarative_base(cls=(JsonSerializer, ModelGeneralTasks))
-Base.query = Session.query_property(GeneralQuery)
+SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
+
+Base = declarative_base()
+
+
+@contextmanager
+def get_db():
+    db = SessionLocal()
+    try:
+        yield db
+    finally:
+        db.close()
