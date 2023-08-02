@@ -41,14 +41,14 @@ class Jobs:
             )
 
         # Apply sorting based on the sort_by parameter
-        if not sort_by:
-            pass
-        elif sort_by.startswith("-"):
-            sort_column = sort_by[1:]
-            query = query.order_by(getattr(Job, sort_column).desc())
-        else:
-            sort_column = sort_by
-            query = query.order_by(getattr(Job, sort_column))
+        if sort_by:
+            sort_column = sort_by[1:] if sort_by.startswith("-") else sort_by
+            order_by_func = (
+                getattr(Job, sort_column).desc()
+                if sort_by.startswith("-")
+                else getattr(Job, sort_column)
+            )
+            query = query.order_by(order_by_func)
 
         # Apply pagination
         jobs = query.offset((page - 1) * per_page).limit(per_page).all()

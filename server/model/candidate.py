@@ -17,7 +17,7 @@ class Candidate(Base):
     uuid = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     name = Column(String(255))
     date_of_birth = Column(String(255))
-    submited_datetime = Column(DateTime)
+    submitted_datetime = Column(DateTime)
     email = Column(String(255), unique=True)  # Add unique constraint
     phone = Column(String(255))
     cv_score = Column(Float)
@@ -51,11 +51,11 @@ class Candidate(Base):
             "uuid": self.uuid,
             "name": self.name,
             "date_of_birth": self.date_of_birth,
-            "submited_datetime": self.submited_datetime,
+            "submitted_datetime": self.submitted_datetime,
             "email": self.email,
             "phone": self.phone,
             "cv_score": self.cv_score,
-            "job_id": self.job_id,
+            "job_uuid": self.job_uuid,
             "status": self.status,
             "interview_feedback": self.interview_feedback,
             "createdAt": self.createdAt,

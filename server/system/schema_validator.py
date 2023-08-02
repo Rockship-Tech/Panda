@@ -3,11 +3,10 @@ import uuid
 from flask import request
 from functools import wraps
 
-from pydantic import BaseModel, constr, validator, EmailStr
+from pydantic import BaseModel, constr, validator, EmailStr, Json
 from pydantic.types import conint, confloat
 
-from server.util.common_validator import email_validator
-from typing import Dict
+from typing import Any, List, Dict
 
 
 DATE_FORMAT = "%Y-%m-%d"
@@ -25,10 +24,13 @@ class Job(BaseModel):
 class Candidate(BaseModel):
     name: constr(min_length=1)
     date_of_birth: datetime.date
-    email = EmailStr
-    phone = constr(min_length=1)
-    cv_scrore: confloat(ge=0.0, le=20.0)
-    status = constr(min_length=1)
+    submitted_datetime: datetime.datetime
+    email: EmailStr
+    phone: constr(min_length=1)
+    cv_score: confloat(ge=0.0, le=20.0)
+    job_uuid: uuid.UUID
+    status: constr(min_length=1)
+    interview_feedback: Json
 
 
 def parse_query_params(request_args: Dict) -> Dict:

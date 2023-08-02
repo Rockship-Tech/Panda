@@ -1,7 +1,11 @@
 from typing import List, Optional
 from model import Candidate
 from sqlalchemy.orm import joinedload
+from dateutil import parser  # Import the dateutil.parser module
 import uuid
+from datetime import datetime  # Import the datetime module
+
+DATETIME_FORMAT = "%Y-%m-%dT%H:%M:%S%z"
 
 
 class Candidates:
@@ -12,7 +16,7 @@ class Candidates:
         candidate = Candidate(
             name=request.name,
             date_of_birth=request.date_of_birth,
-            submited_datetime=request.submited_datetime,
+            submitted_datetime=request.submitted_datetime,
             email=request.email,
             phone=request.phone,
             cv_score=request.cv_score,
@@ -49,3 +53,30 @@ class Candidates:
         else:
             # candidate with the given candidateId not found
             return None
+
+    def get_all_candidates(self, request_args) -> List[Candidate]:
+        query = self.database.query(Candidate)
+        page = int(request_args.get("page", 1))
+        per_page = request_args.get("per_page", 20)
+        search_term = request_args.get("search_term", None)
+        sort_by = request_args.get("sort_by", None)
+        if search_term:
+            query = query.filter(
+                Candidate.name.ilike(f"%{search_term}%")
+                | Candidate.email.ilike(f"%{search_term}%")
+                | Candidate.status.ilike(f"%{search_term}%")
+                | Candidate.interview_feedback.ilike(f"%{search_term}%")
+                | Candidate.cv_score.ilike(f"%{search_term}%")
+            )
+        if sort_by:
+            sort_column = sort_by[1:] if sort_by.startswith("-") else sort_by
+            order_by_func = (
+                getattr(Candidate, sort_column).desc()
+                if sort_by.startswith("-")
+                else getattr(Candidate, sort_column)
+            )
+            query = query.order_by(order_by_func)
+
+        candidates = query.offset((page - 1) * per_page).limit(per_page).all()
+        candidates = query.all()
+        return candidates

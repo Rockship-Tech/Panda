@@ -88,8 +88,19 @@ def update_candidate(candidateId):
 
 
 @candidates.route("/<candidateId>", methods=["DELETE"])
-def delete_candidate():
-    pass
+def delete_candidate(candidateId):
+    try:
+        with model_base.get_db() as db:
+            candidate_services = candidatesService(db)
+            deleted = candidate_services.delete_candidate(uuid.UUID(candidateId))
+            if not deleted:
+                return ErrorResponse("/candidates/").internal_server_error_response()
+            return SuccessResponse("/candidates/").generate_response(
+                {"message": "Candidate deleted successfully"}, 200
+            )
+    except Exception as e:
+        print(e)
+        return ErrorResponse("/candidates/").internal_server_error_response()
 
 
 @candidates.route("/<candidateId>/make-appointment", methods=["POST"])
@@ -104,17 +115,51 @@ def send_welcome_email():
 
 @candidates.route("/", methods=["GET"])
 def get_candidates():
-    pass
+    query_params = schema_validator.parse_query_params(request.args)
+    validation_error = schema_validator.valid_params(query_params)
+    if validation_error:
+        return ErrorResponse(context="/candidates/").bad_request_response(
+            validation_error
+        )
+    try:
+        with model_base.get_db() as database:
+            candidates = candidatesService(database).get_all_candidates(query_params)
+            response_data = {
+                "kind": "candidatesListing",
+                "field": "name,date_of_birth,submitted_datetime,email,phone,cv_score,job_uuid,status,interview_feedback",
+                "items": [candidate.display() for candidate in candidates],
+                "page": int(query_params.get("page", 1)),
+                "per_page": int(query_params.get("per_page", 10)),
+                "total": len(candidates),
+            }
+            return SuccessResponse(context="/candidates/").generate_response(
+                response_data
+            )
+    except Exception as e:
+        print(e)
+        return ErrorResponse(context="/candidates/").internal_server_error_response()
 
 
 @candidates.route("/<candidateId>", methods=["GET"])
-def get_a_candidate():
-    pass
+def get_a_candidate(candidateId):
+    try:
+        with model_base.get_db() as db:
+            candidate = candidatesService(db).get_candidate_by_id(candidateId)
+            if not candidate:
+                return ErrorResponse(context="/candidates/").not_found_response()
+            else:
+                return SuccessResponse(context="/candidates/").generate_response(
+                    candidate.display(), 200
+                )
+    except Exception as e:
+        print(e)
+        return ErrorResponse(context="/candidates/").internal_server_error_response()
 
 
-@candidates.route("/", methods=["GET"])
+@candidates.route("/", methods=["POST"])
 def create_candidate():
     data = request.get_json()
+    print(data)
     try:
         candidate = schema_validator.Candidate(**data)
     except ValueError as e:
@@ -122,7 +167,7 @@ def create_candidate():
 
     try:
         with model_base.get_db() as database:
-            created_candidate = candidatesService(database).create_job(candidate)
+            created_candidate = candidatesService(database).create_candidate(candidate)
 
             return SuccessResponse(context="/candidates/").generate_response(
                 created_candidate.display(), 201
