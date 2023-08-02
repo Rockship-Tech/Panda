@@ -1,6 +1,5 @@
 from typing import List, Optional
 from model import Job
-from server.system import responses
 from sqlalchemy.orm import joinedload
 import uuid
 
@@ -53,7 +52,6 @@ class Jobs:
 
         # Apply pagination
         jobs = query.offset((page - 1) * per_page).limit(per_page).all()
-        print("---------->", query, "<----------")
 
         jobs = query.all()
         return jobs

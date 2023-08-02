@@ -3,8 +3,8 @@ import uuid
 from flask import request
 from functools import wraps
 
-from pydantic import BaseModel, constr, validator
-from pydantic.types import conint
+from pydantic import BaseModel, constr, validator, EmailStr
+from pydantic.types import conint, confloat
 
 from server.util.common_validator import email_validator
 from typing import Dict
@@ -20,6 +20,15 @@ class Job(BaseModel):
     responsibilities: constr(min_length=1)
     qualifications: constr(min_length=1)
     work_mode: constr(min_length=1)
+
+
+class Candidate(BaseModel):
+    name: constr(min_length=1)
+    date_of_birth: datetime.date
+    email = EmailStr
+    phone = constr(min_length=1)
+    cv_scrore: confloat(ge=0.0, le=20.0)
+    status = constr(min_length=1)
 
 
 def parse_query_params(request_args: Dict) -> Dict:

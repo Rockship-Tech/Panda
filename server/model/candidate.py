@@ -3,7 +3,7 @@ from datetime import datetime
 
 from system.model_base import Base
 
-from sqlalchemy import Column, Integer, String, Text, DateTime, ForeignKey, JSON
+from sqlalchemy import Column, Integer, Float, String, Text, DateTime, ForeignKey, JSON
 from sqlalchemy.orm import relationship
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.schema import UniqueConstraint
@@ -20,7 +20,7 @@ class Candidate(Base):
     submited_datetime = Column(DateTime)
     email = Column(String(255), unique=True)  # Add unique constraint
     phone = Column(String(255))
-    cv_score = Column(Integer)
+    cv_score = Column(Float)
     job_uuid = Column(UUID(as_uuid=True), ForeignKey("job.uuid"))
     status = Column(String(255))
     interview_feedback = Column(JSON)
