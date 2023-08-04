@@ -1,6 +1,7 @@
 from typing import List, Optional
 from model import Job
-from sqlalchemy.orm import joinedload
+from sqlalchemy import or_
+from sqlalchemy.orm import joinedload, aliased
 import uuid
 
 
@@ -35,9 +36,12 @@ class Jobs:
         # Apply filtering based on the search term
 
         if search_term:
+            search_pattern = f"%{search_term}%"
             query = query.filter(
-                Job.title.ilike(f"%{search_term}%")
-                | Job.description.ilike(f"%{search_term}%")
+                or_(
+                    Job.title.ilike(search_pattern),
+                    Job.description.ilike(search_pattern),
+                )
             )
 
         # Apply sorting based on the sort_by parameter
@@ -50,11 +54,13 @@ class Jobs:
             )
             query = query.order_by(order_by_func)
 
-        # Apply pagination
-        jobs = query.offset((page - 1) * per_page).limit(per_page).all()
+        offset = (page - 1) * per_page
 
-        jobs = query.all()
-        return jobs
+        jobs = query.limit(per_page).offset(offset).all()
+
+        total_jobs = query.count()
+
+        return jobs, total_jobs
 
     def get_job_by_id(self, jobId: uuid.UUID) -> Optional[Job]:
         job = self.database.query(Job).filter_by(uuid=jobId).first()

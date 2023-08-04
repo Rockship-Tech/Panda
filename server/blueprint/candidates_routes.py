@@ -6,7 +6,10 @@ from system.responses import Responses, SuccessResponse, ErrorResponse
 
 # from services.cvparser import parseCV
 from services.s3 import upload_file_to_s3
+from services.email_sender import send_email
+from services.email_gen import Email, Welcome_email, Appointment_email
 from services.candidates import Candidates as candidatesService
+from services.jobs import Jobs as jobsService
 import logging
 import uuid
 import os
@@ -104,13 +107,75 @@ def delete_candidate(candidateId):
 
 
 @candidates.route("/<candidateId>/make-appointment", methods=["POST"])
-def make_appointment():
-    pass
+def make_appointment(candidateId):
+    data = request.get_json()
+    print(data)
+    try:
+        schema_validator.Url(url=data["calendly_link"])
+        schema_validator.Url(url=data["survey_link"])
+    except ValueError as e:
+        return ErrorResponse(context="/candidates/").bad_request_response(str(e))
+
+    try:
+        with model_base.get_db() as db:
+            candidate = candidatesService(db).get_candidate_by_id(candidateId)
+            job = jobsService(db).get_job_by_id(candidate.job_uuid)
+            if not candidate:
+                return ErrorResponse(context="/candidates/").not_found_response()
+            else:
+                # email for test:
+                candidate.email = "hungbk1100@gmail.com"
+                appointment_email = Appointment_email(
+                    candidate.email,
+                    candidate.name,
+                    job.title,
+                    data["calendly_link"],
+                    data["survey_link"],
+                )
+                send_email(
+                    candidate.email,
+                    appointment_email.subject,
+                    appointment_email.body_text,
+                    appointment_email.body_html,
+                )
+                return SuccessResponse("/candidates/").generate_response(
+                    "Email has been queued", 200
+                )
+    except Exception as e:
+        print(e)
+        return ErrorResponse(context="/candidates/").internal_server_error_response()
 
 
 @candidates.route("/<candidateId>/send-welcome-email", methods=["POST"])
-def send_welcome_email():
-    pass
+def send_welcome_email(candidateId):
+    try:
+        with model_base.get_db() as db:
+            candidate = candidatesService(db).get_candidate_by_id(candidateId)
+            job = jobsService(db).get_job_by_id(candidate.job_uuid)
+
+            if not candidate:
+                return ErrorResponse(context="/candidates/").not_found_response()
+            else:
+                # email for test:
+                candidate.email = "hungbk1100@gmail.com"
+                # Create and send the welcome email
+                welcome_email = Welcome_email(
+                    candidate.email, candidate.name, job.title
+                )
+                send_email(
+                    candidate.email,
+                    welcome_email.subject,
+                    welcome_email.body_text,
+                    welcome_email.body_html,
+                )
+
+                return SuccessResponse("/candidates/").generate_response(
+                    "Email has been queued", 200
+                )
+
+    except Exception as e:
+        print(e)
+        return ErrorResponse(context="/candidates/").internal_server_error_response()
 
 
 @candidates.route("/", methods=["GET"])
@@ -159,7 +224,6 @@ def get_a_candidate(candidateId):
 @candidates.route("/", methods=["POST"])
 def create_candidate():
     data = request.get_json()
-    print(data)
     try:
         candidate = schema_validator.Candidate(**data)
     except ValueError as e:

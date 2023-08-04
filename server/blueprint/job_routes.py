@@ -31,7 +31,7 @@ def create_job():
             )
 
     except Exception as e:
-        logging.error(e)
+        print(e)
         return ErrorResponse(context="/jobs/").internal_server_error_response()
 
 
@@ -44,7 +44,7 @@ def get_job_with_candidates(jobId):
                 return ErrorResponse(context="/jobs/").not_found_response()
             else:
                 return SuccessResponse(context="/jobs/").generate_response(
-                    job.display(), 200
+                    job.display(with_candidates=True), 200
                 )
     except Exception as e:
         print(e)
@@ -95,18 +95,14 @@ def get_all_jobs():
     try:
         with model_base.get_db() as database:
             jobs_service = jobsService(database)
-            jobs = jobs_service.get_all_jobs(query_params)
-
-            page = int(query_params.get("page", 1))
-            per_page = int(query_params.get("per_page", 10))
-            total_jobs = len(jobs)
-            # Convert each Job object to a dictionary representation
+            jobs, total_jobs = jobs_service.get_all_jobs(query_params)
+            logging.info(f"Total jobs: {total_jobs}")
             response_data = {
                 "kind": "jobListing",
                 "fields": "id,title,description,responsibilities,qualifications,work_mode,createdAt,updatedAt",
                 "items": [job.display() for job in jobs],
-                "page": page,
-                "perPage": per_page,
+                "page": int(query_params.get("page", 1)),
+                "perPage": int(query_params.get("per_page", 10)),
                 "total": total_jobs,
             }
 

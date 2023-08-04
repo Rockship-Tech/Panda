@@ -24,6 +24,7 @@ class Candidate(Base):
     job_uuid = Column(UUID(as_uuid=True), ForeignKey("job.uuid"))
     status = Column(String(255))
     interview_feedback = Column(JSON)
+    cv_json = Column(JSON)
     createdAt = Column(DateTime, default=datetime.utcnow())
     updatedAt = Column(DateTime, default=datetime.utcnow(), onupdate=datetime.utcnow())
 
@@ -58,6 +59,7 @@ class Candidate(Base):
             "job_uuid": self.job_uuid,
             "status": self.status,
             "interview_feedback": self.interview_feedback,
+            "cv_json": self.cv_json,
             "createdAt": self.createdAt,
             "updatedAt": self.updatedAt,
         }
