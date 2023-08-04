@@ -3,7 +3,7 @@ import uuid
 from flask import request
 from functools import wraps
 
-from pydantic import BaseModel, constr, validator, EmailStr, Json
+from pydantic import BaseModel, constr, validator, EmailStr, Json, HttpUrl
 from pydantic.types import conint, confloat
 
 from typing import Any, List, Dict
@@ -30,7 +30,8 @@ class Candidate(BaseModel):
     cv_score: confloat(ge=0.0, le=20.0)
     job_uuid: uuid.UUID
     status: constr(min_length=1)
-    interview_feedback: Json
+    interview_feedback: dict[str, str]
+    cv_json: dict[str, Any]
 
 
 def parse_query_params(request_args: Dict) -> Dict:
@@ -78,3 +79,7 @@ def valid_params(query_params: Dict) -> str:
         return ""
     except ValueError as e:
         return str(e)
+
+
+class Url(BaseModel):
+    url: HttpUrl

@@ -45,8 +45,8 @@ class Job(Base):
     def updated_at(self, value):
         self.updatedAt = value
 
-    def display(self):
-        return {
+    def display(self, with_candidates=False):
+        job_data = {
             "uuid": self.uuid,
             "title": self.title,
             "description": self.description,
@@ -56,6 +56,11 @@ class Job(Base):
             "createdAt": self.createdAt,
             "updatedAt": self.updatedAt,
         }
+        if with_candidates:
+            job_data["candidates"] = [
+                candidate.display() for candidate in self.candidates
+            ]
+        return job_data
 
 
 @event.listens_for(Job, "before_delete")

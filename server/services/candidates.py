@@ -23,6 +23,7 @@ class Candidates:
             job_uuid=request.job_uuid,
             status=request.status,
             interview_feedback=request.interview_feedback,
+            cv_json=request.cv_json,
         )
         self.database.add(candidate)
         self.database.commit()
@@ -76,7 +77,20 @@ class Candidates:
                 else getattr(Candidate, sort_column)
             )
             query = query.order_by(order_by_func)
-
         candidates = query.offset((page - 1) * per_page).limit(per_page).all()
-        candidates = query.all()
         return candidates
+
+    def delete_candidate(self, candidateId: uuid.UUID) -> bool:
+        candidate = self.get_candidate_by_id(candidateId)
+        if candidate:
+            self.database.delete(candidate)
+            self.database.commit()
+            return True
+        else:
+            return False
+
+    def make_appointment(self, candidateId: uuid.UUID):
+        candidate = self.get_candidate_by_id(candidateId)
+
+        if candidate:
+            candidate_email = candidate.email
