@@ -3,7 +3,7 @@ from datetime import datetime
 
 from system.model_base import Base
 
-from sqlalchemy import Column, Integer, String, Text, DateTime, ForeignKey, JSON
+from sqlalchemy import Column, Integer, Float, String, Text, DateTime, ForeignKey, JSON
 from sqlalchemy.orm import relationship
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.schema import UniqueConstraint
@@ -17,10 +17,10 @@ class Candidate(Base):
     uuid = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     name = Column(String(255))
     date_of_birth = Column(String(255))
-    submited_datetime = Column(DateTime)
+    submitted_datetime = Column(DateTime)
     email = Column(String(255), unique=True)  # Add unique constraint
     phone = Column(String(255))
-    cv_score = Column(Integer)
+    cv_score = Column(Float)
     job_uuid = Column(UUID(as_uuid=True), ForeignKey("job.uuid"))
     status = Column(String(255))
     interview_feedback = Column(JSON)
@@ -51,11 +51,11 @@ class Candidate(Base):
             "uuid": self.uuid,
             "name": self.name,
             "date_of_birth": self.date_of_birth,
-            "submited_datetime": self.submited_datetime,
+            "submitted_datetime": self.submitted_datetime,
             "email": self.email,
             "phone": self.phone,
             "cv_score": self.cv_score,
-            "job_id": self.job_id,
+            "job_uuid": self.job_uuid,
             "status": self.status,
             "interview_feedback": self.interview_feedback,
             "createdAt": self.createdAt,
