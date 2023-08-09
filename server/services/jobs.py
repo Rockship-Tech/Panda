@@ -66,6 +66,10 @@ class Jobs:
         job = self.database.query(Job).filter_by(uuid=jobId).first()
         return job
 
+    def get_job_by_name(self, job_name: str) -> Optional[Job]:
+        job = self.database.query(Job).filter_by(title=job_name).first()
+        return job
+
     def get_job_with_candidates(self, jobId: uuid.UUID) -> Optional[Job]:
         # Use class-bound attribute directly for joinedload
         job = (
