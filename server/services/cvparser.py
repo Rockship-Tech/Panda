@@ -20,10 +20,20 @@ from langchain.document_loaders import PyPDFLoader
 
 
 # Schema
-def cv_parser(filepath) -> dict:
+def cv_parser(file) -> dict:
+    #####################################
+    # Input: directory of 1 CV file     #
+    # Output: the JSON extracted schema #
+    #####################################
+
+    # Environment check for OPENAI key | <------ Need to integrate logging here
+    if os.getenv("OPENAI_API_KEY") is None or os.getenv("OPENAI_API_KEY") == "":
+        exit("OPENAI_API_KEY is not set")
+
+    # Schema
     designation_schema = ResponseSchema(
         name="designation",
-        description="Extract all positions or job titles of the person writting this CV. Output them as a Python list, if can't find any output empty list.",
+        description="Extract the latest job title of the person writting this CV. If you can't find any output None.",
     )
     name_schema = ResponseSchema(
         name="name",
@@ -53,6 +63,14 @@ def cv_parser(filepath) -> dict:
         name="company_names",
         description="What is the name of the company attended by the person writing this CV. If this information is not found, output None.",
     )
+    experience_schema = ResponseSchema(
+        name="experience",
+        description="Extract all the jobs experience of the writer possessed by the person writing this CV. Each job experience is a JSON dictionary of company name, project name, position name and the duration then concanate them into a list, if you can't find any field just let them be empty string. If you can't find any information, output empty list.",
+    )
+    certificate_schema = ResponseSchema(
+        name="certificate",
+        description="Extract any certificate (not a degree) of the person writing this CV. Output them as a comma separated Python list.",
+    )
 
     response_schemas = [
         name_schema,
@@ -61,10 +79,11 @@ def cv_parser(filepath) -> dict:
         skills_schema,
         college_name_schema,
         degree_schema,
+        certificate_schema,
         designation_schema,
         company_names_schema,
+        experience_schema,
         # no_of_pages_schema,
-        # total_experience_schema,
     ]
 
     # Parser
@@ -77,11 +96,11 @@ def cv_parser(filepath) -> dict:
     for Human. For the following CV that was given below, extract the following 
     information:
 
-    designation: Extract all positions or job titles of the person writting this CV. Output them as a Python list, if can't find any output empty list.
+    designation: Extract the latest job title of the person writting this CV. If you can't find any output None.
 
     name: What is the name of the person writing this CV. If this information is not found, output None.
 
-    email: Extract any email address, and output them as a Python string.
+    email: Extract any email address, and output them as a Python string. If this information is not found, output None.
 
     mobile_number: What is the mobile number of the person writing this CV. Output them as a string. If you can't find it, output None.
 
@@ -92,32 +111,60 @@ def cv_parser(filepath) -> dict:
     degree: Extract any academic degree of the person writing this CV. Output them as a comma separated Python list.
                                     
     company_names: What is the name of the company attended by the person writing this CV. If this information is not found, output None.
-                                        
+
+    experience: Extract all the jobs experience of the writer possessed by the person writing this CV. Each job experience is a JSON dictionary of company name, project name, position name and the duration then concanate them into a list, if you can't find any field just let them be empty string. If you can't find any information, output empty list.
+
+    certificate: Extract any certificate (not a degree) of the person writing this CV. Output them as a comma separated Python list.
+                                                                            
     CV: {text}
 
     {format_instructions}
     """
 
-    # Init memory
-    memory = ConversationBufferWindowMemory(k=7)
+    # Init prompt
+    prompt = ChatPromptTemplate.from_template(template=input_template)
 
     # Init chatbot
     llm = ChatOpenAI(temperature=0.0)
 
-    # Load the CV file
-    with open(filepath, "r", encoding="utf-8") as cv_file:
-        cv_text = cv_file.read()
+    text = ""
+    no_of_pages = 0
 
-    # Init prompt
-    prompt = ChatPromptTemplate.from_template(template=input_template)
+    # Handle file extension, only pdf in this version
+
+    if not str(file).endswith(".pdf"):
+        exit("File is not .PDF")
+
+    # Loader
+    try:
+        loader = PyPDFLoader(file)
+        pages = loader.load()
+    except:
+        exit("Corrupted file")
+    else:
+        loader = PyPDFLoader(file)
+        pages = loader.load()
+
+    no_of_pages = len(pages)
+    sum = 0
+    for page in pages:
+        sum += len(page.page_content)
+        text += page.page_content
+
+    # Pre-check for the tokens limitation
+    tokens = llm.get_num_tokens(text=text)
+    if tokens > MAX_TOKENS:
+        exit("Exceed tokens limitation input")
+
+    # Prepare message for Prompt
     messages = prompt.format_messages(
-        text=cv_text, format_instructions=format_instructions
+        text=text, format_instructions=format_instructions
     )
     response = llm(messages)
 
-    # Parse the output and return as JSON
+    # Result is in output_dict
     output_dict = output_parser.parse(response.content)
-    # output_dict["no_of_pages"] = no_of_pages
+    output_dict["no_of_pages"] = no_of_pages
 
     return output_dict
 
