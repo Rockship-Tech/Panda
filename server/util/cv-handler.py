@@ -106,9 +106,9 @@ def cv_handle(file):
     no_of_pages = 0
     
     # Handle file extension, only pdf in this version
-    print(file)
+    
     if not str(file).endswith('.pdf'):
-        exit(1)
+        exit("File is not .PDF")
         
     # Loader
     try:
