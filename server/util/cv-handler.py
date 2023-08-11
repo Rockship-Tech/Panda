@@ -3,12 +3,28 @@ from langchain.prompts import ChatPromptTemplate
 from langchain.chat_models import ChatOpenAI
 from langchain.output_parsers import ResponseSchema, StructuredOutputParser
 from langchain.document_loaders import PyPDFLoader
+from langchain.llms.base import LLM
 
-def cv_handler(file):
+# Set API keys
+import os
+import openai
+from dotenv import load_dotenv, find_dotenv
+load_dotenv(find_dotenv(),override=True) # read local .env file
+
+openai.api_key = os.environ["OPENAI_API_KEY"]
+
+MAX_TOKENS = 3600
+
+def cv_handle(file):
+    
     #####################################
     # Input: directory of 1 CV file     #
     # Output: the JSON extracted schema #
     #####################################
+    
+    # Environment check for OPENAI key | <------ Need to integrate logging here
+    if os.getenv("OPENAI_API_KEY") is None or os.getenv("OPENAI_API_KEY") == "":
+        exit("OPENAI_API_KEY is not set")
     
     # Schema
     designation_schema = ResponseSchema(name="designation",
@@ -90,18 +106,31 @@ def cv_handler(file):
     no_of_pages = 0
     
     # Handle file extension, only pdf in this version
+    print(file)
     if not str(file).endswith('.pdf'):
         exit(1)
         
     # Loader
-    loader = PyPDFLoader(file)
-    pages = loader.load()
+    try:
+        loader = PyPDFLoader(file)
+        pages = loader.load()
+    except:
+        exit('Corrupted file')
+    else:
+        loader = PyPDFLoader(file)
+        pages = loader.load()
+    
     no_of_pages = len(pages)
     sum = 0
     for page in pages:
         sum += (len(page.page_content))
         text += page.page_content
         
+    # Pre-check for the tokens limitation
+    tokens = llm.get_num_tokens(text=text)
+    if tokens > MAX_TOKENS:
+        exit('Exceed tokens limitation input')
+    
     # Prepare message for Prompt
     messages = prompt.format_messages(text=text,
                                     format_instructions=format_instructions)
@@ -112,3 +141,12 @@ def cv_handler(file):
     output_dict["no_of_pages"] = no_of_pages
 
     return output_dict
+
+# # Example
+# def main():
+#     file = "./CVs/Nguyen_Viet_Ly.pdf"
+    
+#     print(cv_handle(file))
+    
+# if __name__ == "__main__":
+#     main()
