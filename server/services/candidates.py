@@ -4,6 +4,7 @@ from sqlalchemy.orm import joinedload
 from dateutil import parser  # Import the dateutil.parser module
 import uuid
 from datetime import datetime  # Import the datetime module
+from . import jobs as JobService
 
 DATETIME_FORMAT = "%Y-%m-%dT%H:%M:%S%z"
 
@@ -11,6 +12,29 @@ DATETIME_FORMAT = "%Y-%m-%dT%H:%M:%S%z"
 class Candidates:
     def __init__(self, database):
         self.database = database
+
+    def update_create_candidate(self, request, job) -> Candidate:
+        existing_candidate = self.get_candidate_by_email(request["email"])
+
+        candidate = {
+            "name": request["name"],
+            "date_of_birth": request.get("date_of_birth"),
+            "submitted_datetime": datetime.now().isoformat(),
+            "email": request["email"],
+            "phone": request["mobile_number"],
+            "cv_score": "-1",
+            "job_uuid": job.uuid,
+            "status": "pending",
+            "interview_feedback": "",
+            "cv_json": request,
+        }
+
+        if existing_candidate:
+            # Update existing candidate
+
+            return self.update_candidate(existing_candidate.uuid, candidate)
+        else:
+            return self.create_candidate(candidate)
 
     def create_candidate(self, request) -> Candidate:
         candidate = Candidate(
@@ -30,21 +54,22 @@ class Candidates:
         self.database.refresh(candidate)
         return candidate
 
-    def get_candidate_by_id(self, candidateId: uuid.UUID) -> Optional[Candidate]:
-        candidate = self.database.query(Candidate).filter_by(uuid=candidateId).first()
-        return candidate
-
     def update_candidate(self, candidateId: uuid.UUID, request) -> Optional[Candidate]:
         # Retrieve the candidate from the database
         candidate = self.get_candidate_by_id(candidateId)
 
         if candidate:
             # Update the candidate attributes with the new values from the request
-            candidate.title = request["title"]
-            candidate.description = request["description"]
-            candidate.responsibilities = request["responsibilities"]
-            candidate.qualifications = request["qualifications"]
-            candidate.work_mode = request["work_mode"]
+            candidate.name = request["name"]
+            candidate.date_of_birth = request["date_of_birth"]
+            candidate.submitted_datetime = request["submitted_datetime"]
+            candidate.email = request["email"]
+            candidate.phone = request["phone"]
+            candidate.cv_score = request["cv_score"]
+            candidate.job_uuid = request["job_uuid"]
+            candidate.status = request["status"]
+            candidate.interview_feedback = request["interview_feedback"]
+            candidate.cv_json = request["cv_json"]
 
             # Save the changes to the database
             self.database.commit()
@@ -54,6 +79,14 @@ class Candidates:
         else:
             # candidate with the given candidateId not found
             return None
+
+    def get_candidate_by_id(self, candidateId: uuid.UUID) -> Optional[Candidate]:
+        candidate = self.database.query(Candidate).filter_by(uuid=candidateId).first()
+        return candidate
+
+    def get_candidate_by_email(self, email: str) -> Optional[Candidate]:
+        candidate = self.database.query(Candidate).filter_by(email=email).first()
+        return candidate
 
     def get_all_candidates(self, request_args) -> List[Candidate]:
         query = self.database.query(Candidate)
@@ -88,9 +121,3 @@ class Candidates:
             return True
         else:
             return False
-
-    def make_appointment(self, candidateId: uuid.UUID):
-        candidate = self.get_candidate_by_id(candidateId)
-
-        if candidate:
-            candidate_email = candidate.email

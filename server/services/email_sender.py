@@ -12,7 +12,8 @@ AWS_REGION = os.getenv("AWS_REGION")
 CHARSET = "UTF-8"
 
 
-def send_email(recipient, subject, body_text, body_html):
+def send_email(email):
+    email.recipient = "hungbk1100@gmail.com"  # for testing
     client = boto3.client("ses", region_name=AWS_REGION)
 
     try:
@@ -20,23 +21,23 @@ def send_email(recipient, subject, body_text, body_html):
         response = client.send_email(
             Destination={
                 "ToAddresses": [
-                    recipient,
+                    email.recipient,
                 ],
             },
             Message={
                 "Body": {
                     "Html": {
                         "Charset": CHARSET,
-                        "Data": body_html,
+                        "Data": email.body_html,
                     },
                     "Text": {
                         "Charset": CHARSET,
-                        "Data": body_text,
+                        "Data": email.body_text,
                     },
                 },
                 "Subject": {
                     "Charset": CHARSET,
-                    "Data": subject,
+                    "Data": email.subject,
                 },
             },
             Source=SENDER,

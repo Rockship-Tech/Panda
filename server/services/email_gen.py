@@ -56,3 +56,44 @@ class Appointment_email(Email):
 </body>
 </html>""",
         )
+
+
+class JobOffer_email(Email):
+    def __init__(
+        self,
+        recipient,
+        job_title,
+        offer_details,
+        salary,
+        start_date,
+        benefits,
+        contact_email,
+    ):
+        super().__init__(
+            sender=os.getenv("RECRUIT_EMAIL"),
+            recipient=recipient,
+            subject="Congratulations! Job Offer from Rockship",
+            body_text=f"Hello,\r\n"
+            f"We are pleased to offer you the position of {job_title} at our company.\r\n"
+            f"Job Details:\r\n"
+            f"Offer Details: {offer_details}\r\n"
+            f"Salary: {salary}\r\n"
+            f"Start Date: {start_date}\r\n"
+            f"Benefits: {', '.join(benefits)}\r\n"
+            f"Contact Email: {contact_email}\r\n"
+            "Please feel free to contact us if you have any questions.\r\n",
+            body_html=f"""<html>
+<head></head>
+<body>
+  <h1>Congratulations! Job Offer from Rockship</h1>
+  <p>We are pleased to offer you the position of {job_title} at our company.</p>
+  <h2>Job Details:</h2>
+  <p><strong>Offer Details:</strong> {offer_details}</p>
+  <p><strong>Salary:</strong> {salary}</p>
+  <p><strong>Start Date:</strong> {start_date}</p>
+  <p><strong>Benefits:</strong> {', '.join(benefits)}</p>
+  <p><strong>Contact Email:</strong> {contact_email}</p>
+  <p>Please feel free to contact us if you have any questions.</p>
+</body>
+</html>""",
+        )

@@ -7,9 +7,10 @@ from system.responses import Responses, SuccessResponse, ErrorResponse
 # from services.cvparser import parseCV
 from services.s3 import upload_file_to_s3
 from services.email_sender import send_email
-from services.email_gen import Email, Welcome_email, Appointment_email
+from services.email_gen import Email, Welcome_email, Appointment_email, JobOffer_email
 from services.candidates import Candidates as candidatesService
 from services.jobs import Jobs as jobsService
+from services.cvparser import cv_parser, cv1
 import logging
 import uuid
 import os
@@ -40,10 +41,27 @@ def input_cv():
 
         # Save the file to the server
         file.save(os.path.join("CVs", file.filename))
-
-        # CVjson = parseCV(file)
-
-        # updateCandidate(CVjson)
+        cv_filepath = os.path.join("CVs", file.filename)
+        # for testing, using cv1
+        parsed_data = cv1(cv_filepath)
+        # parsed_data = cv_parser(cv_filepath)
+        with model_base.get_db() as db:
+            designation_list = parsed_data["designation"]
+            found_job = next(
+                (
+                    jobsService(db).get_job_by_name(d)
+                    for d in designation_list
+                    if jobsService(db).get_job_by_name(d)
+                ),
+                None,
+            )
+            if found_job:
+                candidate_services = candidatesService(db)
+                new_update_candidate = candidate_services.update_create_candidate(
+                    parsed_data, found_job
+                )
+            else:
+                return ErrorResponse("/input-cv").bad_request_response("Job not found")
 
         # update to S3
         # Save the file to S3
@@ -57,7 +75,7 @@ def input_cv():
         os.remove(filepath)
         # Return a success response indicating the CV was successfully processed
         return SuccessResponse("/input-cv").generate_response(
-            "CV has been uploaded", 200
+            new_update_candidate.display(), 200
         )
     except Exception as e:
         print(e)
@@ -71,10 +89,8 @@ def update_candidate(candidateId):
 
         with model_base.get_db() as db:
             candidate_services = candidatesService(db)
-            candidates = candidate_services.get_candidate_by_id(
-                uuid.UUID(request_data["id"])
-            )
-            if not candidates:
+            candidate = candidate_services.get_candidate_by_id(candidateId)
+            if not candidate:
                 return ErrorResponse("/candidates/").not_found_response()
             updated_candidate = candidate_services.update_candidate(
                 uuid.UUID(candidateId), request_data
@@ -109,7 +125,6 @@ def delete_candidate(candidateId):
 @candidates.route("/<candidateId>/make-appointment", methods=["POST"])
 def make_appointment(candidateId):
     data = request.get_json()
-    print(data)
     try:
         schema_validator.Url(url=data["calendly_link"])
         schema_validator.Url(url=data["survey_link"])
@@ -123,8 +138,6 @@ def make_appointment(candidateId):
             if not candidate:
                 return ErrorResponse(context="/candidates/").not_found_response()
             else:
-                # email for test:
-                candidate.email = "hungbk1100@gmail.com"
                 appointment_email = Appointment_email(
                     candidate.email,
                     candidate.name,
@@ -132,15 +145,42 @@ def make_appointment(candidateId):
                     data["calendly_link"],
                     data["survey_link"],
                 )
-                send_email(
-                    candidate.email,
-                    appointment_email.subject,
-                    appointment_email.body_text,
-                    appointment_email.body_html,
-                )
+                send_email(appointment_email)
                 return SuccessResponse("/candidates/").generate_response(
                     "Email has been queued", 200
                 )
+    except Exception as e:
+        print(e)
+        return ErrorResponse(context="/candidates/").internal_server_error_response()
+
+
+@candidates.route("/<candidateId>/send-job-offer", methods=["POST"])
+def send_job_offer(candidateId):
+    offer = request.get_json()
+    try:
+        with model_base.get_db() as db:
+            candidate = candidatesService(db).get_candidate_by_id(candidateId)
+
+            if not candidate:
+                return ErrorResponse(context="/candidates/").not_found_response()
+            else:
+                job_offer_email = JobOffer_email(
+                    candidate.email,
+                    offer["job_title"],
+                    offer["offer_details"],
+                    offer["salary"],
+                    offer["start_date"],
+                    offer["benefits"],
+                    offer["contact_email"],
+                )
+                send_email(
+                    job_offer_email,
+                )
+
+                return SuccessResponse("/candidates/").generate_response(
+                    "Email has been queued", 200
+                )
+
     except Exception as e:
         print(e)
         return ErrorResponse(context="/candidates/").internal_server_error_response()
@@ -156,18 +196,11 @@ def send_welcome_email(candidateId):
             if not candidate:
                 return ErrorResponse(context="/candidates/").not_found_response()
             else:
-                # email for test:
-                candidate.email = "hungbk1100@gmail.com"
                 # Create and send the welcome email
                 welcome_email = Welcome_email(
                     candidate.email, candidate.name, job.title
                 )
-                send_email(
-                    candidate.email,
-                    welcome_email.subject,
-                    welcome_email.body_text,
-                    welcome_email.body_html,
-                )
+                send_email(welcome_email)
 
                 return SuccessResponse("/candidates/").generate_response(
                     "Email has been queued", 200
