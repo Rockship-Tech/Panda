@@ -35,8 +35,8 @@ def test_database_connection():
 
 def create_app():
     app = Flask(__name__)
-    from .blueprint.job_routes import jobs as jobs_router
-    from .blueprint.candidates_routes import candidates as candidates_router
+    from blueprint.job_routes import jobs as jobs_router
+    from blueprint.candidates_routes import candidates as candidates_router
 
     app.register_blueprint(jobs_router)
     app.register_blueprint(candidates_router)

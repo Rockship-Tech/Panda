@@ -1,2 +1,0 @@
-FROM apache/airflow
-COPY . .
