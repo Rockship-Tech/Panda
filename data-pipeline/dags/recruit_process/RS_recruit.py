@@ -57,7 +57,7 @@ def crawl_cvs_task():
 
 def download_from_s3(s3_file):
     # Task 1: Download the PDF file from S3 to local
-    s3_hook = S3Hook(aws_conn_id=AWS_CONN_ID)
+    s3_hook = S3Hook(aws_conn_id='s3_default')
     # local_pdf_path = f"/tmp/{os.path.basename(s3_file)}"
     file_name = s3_hook.download_file(
         key=s3_file,
