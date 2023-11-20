@@ -50,10 +50,6 @@ def crawl_cvs_task():
     #             logging.info(f"Downloaded {pdf_file_path}")
     #
 
-print("start crawl")
-crawl_cvs_task()
-print("end crawl")
-
 
 def download_from_s3(s3_file):
     # Task 1: Download the PDF file from S3 to local
@@ -153,25 +149,25 @@ def retrieve_and_convert_pdfs_task():
     return converted_files
 
 
-# with DAG(
-#         "cv_processing_dag",
-#         default_args=default_args,
-#         start_date=datetime(2023, 1, 1),
-#         catchup=False,
-#         tags=["Rockship Recruitment Process"],
-# ) as dag:
-#     # Task 0: Crawl all CVs from itviec.com
-#     crawl_cvs = crawl_cvs_task()
-#
-#     # Task 1: Retrieve and convert PDFs to text
-#     cv_files = S3Hook(aws_conn_id=AWS_CONN_ID).list_keys(
-#         bucket_name=bucket_name, prefix=CVs_path
-#     )
-#     retrieve_and_convert_pdfs = PythonOperator(
-#         task_id="retrieve_and_convert_pdfs_task",
-#         python_callable=retrieve_and_convert_pdfs_task,
-#         dag=dag,
-#     )
+with DAG(
+        "cv_processing_dag",
+        default_args=default_args,
+        start_date=datetime(2023, 1, 1),
+        catchup=False,
+        tags=["Rockship Recruitment Process"],
+) as dag:
+    # Task 0: Crawl all CVs from itviec.com
+    crawl_cvs = crawl_cvs_task()
+
+    # Task 1: Retrieve and convert PDFs to text
+    cv_files = S3Hook(aws_conn_id=AWS_CONN_ID).list_keys(
+        bucket_name=bucket_name, prefix=CVs_path
+    )
+    retrieve_and_convert_pdfs = PythonOperator(
+        task_id="retrieve_and_convert_pdfs_task",
+        python_callable=retrieve_and_convert_pdfs_task,
+        dag=dag,
+    )
 
     # Set task dependencies
-   # crawl_cvs >> retrieve_and_convert_pdfs
+    crawl_cvs >> retrieve_and_convert_pdfs
