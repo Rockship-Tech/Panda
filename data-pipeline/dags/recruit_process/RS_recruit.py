@@ -1,22 +1,18 @@
+import logging
 import os
-import sys
-import re
-import tempfile
+
+from bs4 import BeautifulSoup
+from PyPDF2 import PdfReader
 from airflow import DAG
 from airflow.decorators import task
-from airflow.providers.amazon.aws.hooks.s3 import S3Hook
-from botocore.exceptions import NoCredentialsError
 from airflow.operators.python import PythonOperator
+from airflow.providers.amazon.aws.hooks.s3 import S3Hook
+from selenium import webdriver
+from selenium.webdriver.chrome.options import Options
+from dotenv import load_dotenv
 from pendulum import datetime
-import logging
-import pdfplumber
-from PyPDF2 import PdfReader
 
 from common.scripts.ITViecCVScraper import ITViecCVScraper
-from common.scripts.pdf_converter import pdf_converter
-from dotenv import load_dotenv
-
-from airflow.models import Variable
 
 # Load environment variables from .env file
 load_dotenv()
@@ -31,28 +27,32 @@ default_args = {
 }
 
 
-@task
 def crawl_cvs_task():
     # Task 0: Crawl all CVs from itviec.com
     # ITviec.com login info
     # later save in airflow variable for more security
+    print("pending")
     login_url = os.getenv("ITVIEC_LOGIN_URL")
     applications_url = os.getenv("ITVIEC_APPLICATIONS_URL")
     username = os.getenv("ITVIEC_USERNAME")
     password = os.getenv("ITVIEC_PASSWORD")
-
     downloader = ITViecCVScraper()
     if downloader.login(login_url, username, password):
         downloader.download_all_cvs(applications_url, per_page=10)
 
     # Check if CVs have been downloaded
-    if os.path.exists("CVs"):
-        cv_files = os.listdir("CVs")
-        cv_files = cv_files[:10]  # Select only the first 10 CVs for testing
-        for filename in cv_files:
-            if filename.endswith(".pdf"):
-                pdf_file_path = os.path.join("CV", filename)
-                logging.info(f"Downloaded {pdf_file_path}")
+    # if os.path.exists("CVs"):
+    #     cv_files = os.listdir("CVs")
+    #     cv_files = cv_files[:10]  # Select only the first 10 CVs for testing
+    #     for filename in cv_files:
+    #         if filename.endswith(".pdf"):
+    #             pdf_file_path = os.path.join("CV", filename)
+    #             logging.info(f"Downloaded {pdf_file_path}")
+    #
+
+print("start crawl")
+crawl_cvs_task()
+print("end crawl")
 
 
 def download_from_s3(s3_file):
@@ -153,26 +153,25 @@ def retrieve_and_convert_pdfs_task():
     return converted_files
 
 
-with DAG(
-    "cv_processing_dag",
-    default_args=default_args,
-    schedule_interval=None,
-    start_date=datetime(2023, 1, 1),
-    catchup=False,
-    tags=["Rockship Recruitment Process"],
-) as dag:
-    # Task 0: Crawl all CVs from itviec.com
-    crawl_cvs = crawl_cvs_task()
-
-    # Task 1: Retrieve and convert PDFs to text
-    cv_files = S3Hook(aws_conn_id=AWS_CONN_ID).list_keys(
-        bucket_name=bucket_name, prefix=CVs_path
-    )
-    retrieve_and_convert_pdfs = PythonOperator(
-        task_id="retrieve_and_convert_pdfs_task",
-        python_callable=retrieve_and_convert_pdfs_task,
-        dag=dag,
-    )
+# with DAG(
+#         "cv_processing_dag",
+#         default_args=default_args,
+#         start_date=datetime(2023, 1, 1),
+#         catchup=False,
+#         tags=["Rockship Recruitment Process"],
+# ) as dag:
+#     # Task 0: Crawl all CVs from itviec.com
+#     crawl_cvs = crawl_cvs_task()
+#
+#     # Task 1: Retrieve and convert PDFs to text
+#     cv_files = S3Hook(aws_conn_id=AWS_CONN_ID).list_keys(
+#         bucket_name=bucket_name, prefix=CVs_path
+#     )
+#     retrieve_and_convert_pdfs = PythonOperator(
+#         task_id="retrieve_and_convert_pdfs_task",
+#         python_callable=retrieve_and_convert_pdfs_task,
+#         dag=dag,
+#     )
 
     # Set task dependencies
-    crawl_cvs >> retrieve_and_convert_pdfs
+   # crawl_cvs >> retrieve_and_convert_pdfs
