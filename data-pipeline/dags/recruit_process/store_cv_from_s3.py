@@ -8,7 +8,7 @@ from airflow.decorators import task
 from dotenv import load_dotenv
 import time
 from airflow.providers.amazon.aws.hooks.s3 import S3Hook
-from common.scripts.cv_handler import extract
+from common.scripts.cv_handler import cv_handle
 from common.model.candidate import create_candidate, list_cv_files
 from pendulum import datetime
 from airflow import DAG
@@ -58,7 +58,7 @@ def store_to_db():
     for file_name in os.listdir(cv_folder_path):
         cv_file = os.path.join(cv_folder_path, file_name)
         try:
-            candidate = extract(cv_file)
+            candidate = cv_handle(cv_file)
             create_candidate(name=candidate['name'],
                              email=candidate['email'],
                              phone=candidate['mobile_number'],
