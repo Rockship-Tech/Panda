@@ -1,6 +1,7 @@
 import logging
 import os
 
+import psycopg2
 from bs4 import BeautifulSoup
 from PyPDF2 import PdfReader
 from airflow import DAG
@@ -31,14 +32,13 @@ def crawl_cvs_task():
     # Task 0: Crawl all CVs from itviec.com
     # ITviec.com login info
     # later save in airflow variable for more security
-    print("pending")
     login_url = os.getenv("ITVIEC_LOGIN_URL")
     applications_url = os.getenv("ITVIEC_APPLICATIONS_URL")
     username = os.getenv("ITVIEC_USERNAME")
     password = os.getenv("ITVIEC_PASSWORD")
     downloader = ITViecCVScraper()
     if downloader.login(login_url, username, password):
-        downloader.download_all_cvs(applications_url, per_page=10)
+        downloader.download_all_cvs(applications_url, per_page=20)
 
     # Check if CVs have been downloaded
     # if os.path.exists("CVs"):
@@ -66,6 +66,7 @@ def download_from_s3(s3_file):
 
 
 def convert_pdf_to_text_task(pdf_file_path):
+    print("convert pdf to text tasks")
     try:
         reader = PdfReader(pdf_file_path)
 
