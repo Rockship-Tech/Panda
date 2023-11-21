@@ -3,7 +3,7 @@ airflow-chart/
 Server-new/
 server/.venv
 dags/financial_extraction/output/
-
+CV/
  Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]
@@ -45,6 +45,7 @@ pip-delete-this-directory.txt
 # Unit test / coverage reports
 htmlcov/
 .tox/
+.idea/
 .nox/
 .coverage
 .coverage.*
