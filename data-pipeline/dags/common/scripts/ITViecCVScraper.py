@@ -34,7 +34,7 @@ class ITViecCVScraper:
         """
         scraper = cfscrape.create_scraper()
         soup = BeautifulSoup(scraper.get(login_url).content, 'html.parser')
-        self.session=scraper
+        self.session = scraper
         authenticity_token = soup.find('input', attrs={'name': 'authenticity_token'})['value']
 
         payload = {
@@ -100,7 +100,6 @@ class ITViecCVScraper:
         if self.s3_hook.check_for_key(s3_key, bucket_name='rockship-recruitment-process'):
             print(f"File {s3_key} already exists. Skipping download.")
             return  # Skip the download and continue with the next CV
-
         self.s3_hook.load_file(
             filename=new_file_path,
             key=s3_key,
@@ -136,7 +135,7 @@ class ITViecCVScraper:
 
         return last_page
 
-    def download_all_cvs(self, applications_url, per_page=100, CVs_path='CVs'):
+    def download_all_cvs(self, applications_url, per_page=100, CVs_path='CV'):
         """
         Downloads all CVs from the job applications.
 
@@ -156,15 +155,16 @@ class ITViecCVScraper:
         - None
         """
         max_page = self.get_max_page(applications_url)
-
+        print("___MAX_PAGE___")
+        print(max_page)
         for page in range(1, max_page + 1):
             page_url = f"{applications_url}?page={page}&per={per_page}"
+            print(page_url)
             applications_response = self.session.get(page_url)
 
             soup = BeautifulSoup(applications_response.content, 'html.parser')
             with open('output.html', 'w') as file:
                 file.write(str(applications_response.content))
-
 
             rows = soup.find_all('tr')
 
@@ -174,7 +174,6 @@ class ITViecCVScraper:
                 cells = row.find_all('td')
                 name = cells[0].text.strip()
                 email = cells[1].text.strip()
-                print(email)
                 job = cells[2].text.strip()
                 submitted_date = cells[3].text.strip()
                 cv_url = self.base_url + cells[4].find('a')['href']
