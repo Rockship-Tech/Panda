@@ -10,23 +10,24 @@ from operator import itemgetter
 import os
 import openai
 from dotenv import load_dotenv, find_dotenv
-load_dotenv(find_dotenv(),override=True) # read local .env file
+
+load_dotenv(find_dotenv(), override=True)  # read local .env file
 
 openai.api_key = os.environ["OPENAI_API_KEY"]
-    
+
 MAX_TOKENS = int(3600)
 
+
 def cv_handle(file):
-    
     #####################################
     # Input: directory of 1 CV file     #
     # Output: the JSON extracted schema #
     #####################################
-    
+
     # Environment check for OPENAI key | <------ Need to integrate logging here
     if os.getenv("OPENAI_API_KEY") is None or os.getenv("OPENAI_API_KEY") == "":
-        exit("OPENAI_API_KEY is not set")
-    
+        raise Exception("OPENAI_API_KEY is not set")
+
     # Schema
     name_schema = ResponseSchema(
         name="name",
@@ -100,8 +101,8 @@ any field just let them be empty string.",
 
     # CV extraction template
     cv_extract_chain = (
-        PromptTemplate.from_template(
-        template="""You're a helpful assistant that can scan the CV and extract useful informations \
+            PromptTemplate.from_template(
+                template="""You're a helpful assistant that can scan the CV and extract useful informations \
 for Human. For the below verbatim of a CV, extract the following information:
 
 <information>
@@ -115,42 +116,39 @@ designation, name, email, mobile_number, skills, college_name, degree, company_n
 <Output format>
 {format}
 </Output format>"""
-        )
-        | ChatOpenAI(model="gpt-3.5-turbo", temperature=0.0)
-        | output_parser
+            )
+            | ChatOpenAI(model="gpt-3.5-turbo", temperature=0.0)
+            | output_parser
     )
-    
+
     # Handle file extension, only pdf in this version
     if not str(file).lower().endswith('.pdf'):
-        exit(f"File is not .PDF: {file}")
-    
-    try:
-        loader = PyPDFLoader(file)
-        pages = loader.load()
-    except:
-        exit(f'Corrupted file: {file}')
-    
+        raise TypeError(f"File is not .PDF: {file}")
+
+    loader = PyPDFLoader(file)
+    pages = loader.load()
+
     # Recombine then split to chunks    
     text = "\n\n".join([p.page_content for p in pages])
     no_of_pages = len(pages)
     texts = CharacterTextSplitter(
-                chunk_size=1000, 
-                chunk_overlap=100
-            ).split_text(text)
-    
+        chunk_size=1000,
+        chunk_overlap=100
+    ).split_text(text)
+
     complete_dict_chain = {"text": itemgetter("text"),
                            "format": itemgetter("format")
-                        } | cv_extract_chain
-    
+                           } | cv_extract_chain
+
     try:
         responses = complete_dict_chain.batch([{"text": text, "format": format_instructions} for text in texts])
     except:
         raise Exception(f"An unexpected situation occurred while running batch to a chain. Check {file}")
-    
+
     # CV combine template
     cv_combine_chain = {"text": lambda X: "\n\n".join([str(x) for x in X['text']]), "format": itemgetter("format")} | (
-        PromptTemplate.from_template(
-        template="""You're a helpful assistant that can combine Python dictionaries \
+            PromptTemplate.from_template(
+                template="""You're a helpful assistant that can combine Python dictionaries \
 dict by dict extracted from parts of ONE same CV and craft the final Python dictionary that \
 represent that ONE CV using below information.
                                                                
@@ -161,16 +159,16 @@ represent that ONE CV using below information.
 <Output format>
 {format}
 </Output format>"""
-        )
-        | ChatOpenAI(model="gpt-3.5-turbo", temperature=0.0)
-        | output_parser
+            )
+            | ChatOpenAI(model="gpt-3.5-turbo", temperature=0.0)
+            | output_parser
     )
-    
+
     try:
         response = cv_combine_chain.invoke({"text": responses, "format": format_instructions})
     except:
         raise TypeError("Expecting value in correct list[dict] format in:" + str(responses))
-    
+
     response["no_of_pages"] = no_of_pages
 
     return response

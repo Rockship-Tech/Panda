@@ -25,7 +25,7 @@ current_path = os.path.dirname(os.path.abspath(__file__))
 
 # folder name is prefix's name
 # folder_name = os.getenv("CVS_PATH")
-folder_name = os.getenv("CVS_TEXT_PATH")
+folder_name = os.getenv("CVS_PATH")
 cv_folder_path = os.path.join(current_path, folder_name)
 
 bucket_name = os.getenv("BUCKET_NAME")
